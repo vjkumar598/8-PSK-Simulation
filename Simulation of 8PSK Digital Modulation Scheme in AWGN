@@ -1,0 +1,37 @@
+%Simulation of 8PSK in AWGN
+%Generate 8PSK constellation as complex numbers
+a=cumsum(ones(8,1))-1;
+constellation = exp(1i*2*pi.*a/8);
+nsymbols = 20000;
+ebnodb = 0:0.1:10;%Eb/No in dB
+number_snrs = length(ebnodb);
+perr_estimate = zeros(number_snrs,1);%Initializing the Vector of Prob of error estimates
+
+for k=1:number_snrs %SNR for loop
+ebnodb_now = ebnodb(k);
+ebno=10^(ebnodb_now/10);
+sigma=sqrt(1/(6*ebno));
+%send first symbol (1,0) without loss of generality, add 2-D Gaussian noise
+%(Nc,Ns), where Nc = Ns = sigma * N(0,1)
+received = 1 + sigma*randn(nsymbols,1)+1i*sigma*randn(nsymbols,1);
+decisions=zeros(nsymbols,1);
+      for j=1:nsymbols %Symbol for loop (can/should be avoided for fast implementation)
+          distances = abs(received(j)-constellation);
+          [min_dist,decisions(j)] = min(distances);
+      end
+errors = (decisions ~= 1);
+perr_estimate(k) = sum(errors)/nsymbols;
+end
+
+semilogy(ebnodb,perr_estimate);
+hold on;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%COMPARE WITH INTELLIGENT UNION BOUND
+etaP = 6-3*sqrt(2); %power efficiency
+Ndmin = 2;% number of nearest neighbors
+ebno = 10.^(ebnodb/10);
+perr_union = Ndmin*qfunction(sqrt(etaP*ebno/2)); 
+semilogy(ebnodb,perr_union,':r');
+xlabel('Eb/N0 (dB)');
+ylabel('Symbol error probability');
+legend('Simulation','Intelligent Union Bound','Location','NorthEast');
